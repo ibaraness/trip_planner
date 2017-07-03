@@ -133,6 +133,16 @@
 				return $ul.html();
 			}
 
+			/**
+			 * Get an HTML select form group with a range of numbers (like 1-10)
+			 * @param  {Underscore template function} template - !Important. we pass it in the when creating the partial 
+			 *                              					using underscore partial function.
+			 * @param  {number} from - The range 'from' value (like the 1 from 1-10)
+			 * @param  {number} to   - The range 'to' valte (like the 10 from 1-10)
+			 * @param  {[type]} id   - The select namd and id
+			 * @param  {[type]} label- The label text
+			 * @return {HTML string}          - A ready to implement HTML string
+			 */
 			function _createNumberRangeFormGroup(template, from, to, id, label){
 				var settings = {
 					component_id:id,
@@ -167,49 +177,24 @@
 			var _currentStep = 0;
 
 			/**
-			 * Steps data - 
-			 * Each object in the array has a list of properties like template id, properties etc.
+			 * An array of objects, where each object represents a step.
+			 * Each step has a mandatory properties which are:
+			 * - templateId: A string id to the actual underscore template.
+			 * - dataReady: A boolean flag, that tells the parser(_getCurrentStep) if the data is ready.
+			 * 				We use it here to check if dynamic content was generated (using generator function).
+			 * The step object can have custom properties, which are usually the template content parameters.
+			 * Each custom property must have a 'type' and a 'value' properties.
+			 * - type: 	currently type has 2 available options: 'simple' or 'generator' options.
+			 * 			A 'simple' type has no complex mechanism, and only the 'value' property has 
+			 * 			any importnat here - The template will use the raw value content as is.
+			 * 			A 'generator' type marks the object as data to be generated using different content 
+			 * 			generators. When using the generator as a type, additional properties needs to be set:
+			 *    		- generator: The generator function name
+			 *    		- params: An array of parameters to be passed to the generator function.
+			 *    		
+			 * The use of generator type was set instead of directly passing functions in order to be able to serialize
+			 * the data, so it can be fetched from the server if we like.			
 			 */
-			var _contentData1 = [
-				{
-					templateId:'trip-step1',
-					numOfAdults:function(){return contentManager.getNumberRangeSelect(0, 30, 'numOfAdults', 'Adults')},
-					numOfChildren:function(){return contentManager.getNumberRangeSelect(0, 30, 'numOfChildren', 'Children')}
-				},
-				{
-					templateId:'trip-step2',
-					geographicalRegionsList:function(){return contentManager.getCheckboxGridList([
-						{
-							id:'all', label:'All',
-						},
-						{
-							id:'europ', label:'Europ'
-						},
-						{
-							id:'north_america', label:'North America'
-						},
-						{
-							id:'south_america', label:'South America'
-						},
-						{
-							id:'central_america', label:'Central America'
-						},
-						{
-							id:'africa', label:'Africa'
-						},
-						{
-							id:'asia', label:'Asia'
-						},
-						{
-							id:'pacific', label:'Pacific Rim'
-						},
-						{
-							id:'arctic', label:'Arctic Region'
-						}
-					])}
-				}
-			];
-
 			var _contentData = [
 				{
 					templateId:'trip-step1',
@@ -274,23 +259,6 @@
 			 * @param  {object} obj - The original step object to run it's data callback methods.
 			 * @return {object}     - We return a new object to avoid side effects of immulating the existing one.
 			 */
-			// function _activateDataMethods(obj){
-			// 	var newObj = {};
-			// 	for(prop in obj){
-			// 		if(typeof obj[prop] === 'function'){
-			// 			newObj[prop] = obj[prop]();
-			// 			continue;;
-			// 		}
-			// 		newObj[prop] = obj[prop];
-			// 	}
-			// 	return newObj;
-			// }
-
-			// function _getCurrentStep(){
-			// 	var data = _contentData[_currentStep] = _activateDataMethods(_contentData[_currentStep]);
-			// 	return contentManager.getTemplate(data.templateId)(data); 
-			// }
-
 			function _activateDataGenerators(obj){
 				var newObj = {};
 				for(pkey in obj){
