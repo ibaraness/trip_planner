@@ -143,20 +143,18 @@
 			 * @param  {[type]} label- The label text
 			 * @return {HTML string}          - A ready to implement HTML string
 			 */
-			function _createNumberRangeFormGroup(template, from, to, id, label){
+			var _createNumberRangeFormGroup = _.partial(function(template, from, to, id, label){
 				var settings = {
 					component_id:id,
 					label:label,
 					options: _getSelectOptionsNumberRange(from, to)
 				};
 				return template(settings);
-			}
-
-			var _createNumberRangeFormGroupPartial = _.partial(_createNumberRangeFormGroup, _getTemplate('trip-wizard-modal-select'));
+			}, _getTemplate('trip-wizard-modal-select'))
 
 			return {
 				getNumberRangeSelect:function(from, to, id, label){
-					return _createNumberRangeFormGroupPartial(from, to, id, label);
+					return _createNumberRangeFormGroup(from, to, id, label);
 				},
 				getCheckboxGridList:function(settingsList){
 					return _getCheckboxGridList(settingsList);
