@@ -36,12 +36,13 @@
 			<button class="trip-wizard-modal-action-button trip-wizard-modal-action-back-button trip-wizard-hide js-trip-wizard-modal-prev"><i class="trip-wizard-modal-button-icon fa fa-angle-left" aria-hidden="true"></i>Back</button>
 		</div>
 	</div>
+	<div class="trip-wizard-loader"></div>
 	<!--[MODAL HTML END]-->
 
 	<!--[UNDERSCORE TEMPLATES START]-->
 	<script type="text/template" id="trip-step1">
 		
-		<h4 class="trip-wizard-modal-subtitle">Choose dates</h4>
+		<h4 class="trip-wizard-modal-subtitle">Choose date range</h4>
 		<div class="trip-wizard-modal-form-group">
 			<label for="from_date">From:</label>
 			<input type="text" id="from_date">
@@ -59,7 +60,7 @@
 
 	<script type="text/template" id="trip-step2">
 		<h4 class="trip-wizard-modal-subtitle">Choose how far will you be willing to travel to?</h4>
-		<ul class="trip-wizard-modal-grid-list">
+		<ul class="trip-wizard-modal-grid-list js-trip-wizard-data-subject" data-subject="geographical_region">
 			<%= geographicalRegionsList.value %>
 		</ul>
 		<div><img src="images/FotoliaComp_76810579_OhcfVAPUu8byPLBwu9NNZVD14InmWgpl_NW40.jpeg" width="210" height="210" alt="Travel Style"></div>
@@ -67,14 +68,14 @@
 
 	<script type="text/template" id="trip-step3">
 		<h4 class="trip-wizard-modal-subtitle">Choose your trip style</h4>
-		<ul class="trip-wizard-modal-grid-list">
+		<ul class="trip-wizard-modal-grid-list js-trip-wizard-data-subject" data-subject="trip_styles">
 			<%= tripStyleList.value %>
 		</ul>
 		<div><img src="images/FotoliaComp_162162949_w9ZBb2LuklMVddbyy6KezlxSzI0HKsz7_NW40.jpeg" width="250" height="170" alt="Travel Style"></div>
 	</script>
 
 	<script type="text/template" id="trip-wizard-modal-checkbox-grid">
-		<ul class="trip-wizard-modal-grid-list">
+		<ul class="trip-wizard-modal-grid-list" >
 			<%= listItems.value %>
 		</ul>
 	</script>
@@ -92,21 +93,75 @@
   	crossorigin="anonymous"></script>
   	<script type="text/javascript" src="js/jquery-ui.min.js"></script>
   	<script type="text/javascript" src="js/underscore-min.js"></script>
-	<script type="text/javascript">
-	//TODO: Move all the script under a namespace
-	//Create a state manager that holds all user information
-	//Add a namespace to form input id's
+	<script type="text/javascript">		
 		
+		//TODO: Print the result in the page content, and fade out the modal on finish
+		//TODO: Load content data from server
+		//TODO: Validation for empty fields
+
 		/**
-		 * The main namespace
+		 * The main namespace of the trip planner wizard
 		 */
 		var TripWizard = {}
-		
+
+		/**
+		 * A very simple immutable state manager
+		 * * Dependencies: jQuery, _(underscore)
+		 */
+		TripWizard.stateManager = (function($, _){
+			var _state = {}
+
+			/**
+			 * Handles checkbox changes
+			 */
+			function _handleCheckBox(target){
+				if(target.getAttribute('type') === 'checkbox'){
+					var group = target.parentNode.parentNode.getAttribute('data-subject') || 'unknown_group';
+					_state[group] = _state[group] || {};
+
+					if(!target.checked){
+						_state[group] = _.omit(_state[group], target.getAttribute('id'));
+						return;
+					}
+
+					var newEntry = {};
+					newEntry[target.getAttribute('id')] = true;
+					_state[group] = _.extend(newEntry, _state[group]);
+				}
+			}
+
+			/**
+			 * Handle text input changes
+			 */
+			function _handleTextInput(target){
+				var newEntry = {};
+				newEntry[target.getAttribute('id')] = target.value;
+				_state = _.extend(_.clone(_state), newEntry);
+			}
+
+			$(document).on('change', '.trip-wizard-modal input', function(event){
+				var inputType = event.target.getAttribute('type');
+				if(inputType === 'checkbox'){
+					_handleCheckBox(event.target);
+				}
+				if(inputType === 'text'){
+					_handleTextInput(event.target);
+				}
+			});
+
+			return {
+				getState:function(){
+					return _.clone(_state);
+				}
+			}
+
+		}(jQuery, _));
+
 		/**
 		 * Handle low level template functionality
 		 * Dependencies: jQuery, _(underscore)
 		 */
-		var contentManager = (function($, _){
+		TripWizard.contentManager = (function($, _){
 
 			if(!$){
 				throw 'jQuery was not loaded!';
@@ -200,7 +255,7 @@
 		/**
 		 * Fetch modal steps
 		 */
-		var stepsManager = (function($, contentManager, _){
+		TripWizard.stepsManager = (function($, contentManager, _, stateManager){
 			/**
 			 * Will hold the index of the current step we are in 
 			 */
@@ -383,38 +438,61 @@
 				return newObj;
 			}
 
+			/**
+			 * When HTML is being updated, initialize any jQuery widgets (like datepicker etc.)
+			 */
 			function _runWidgetsWhenReady(){
-				console.log("_runWidgetsWhenReady");
 				var templateWidgets = _widgets[_contentData[_currentStep].templateId];
 				if(templateWidgets){
 					
 					for(var i = 0, len = templateWidgets.length; i < len; i++){
 						if($(templateWidgets[i].selector)[0] !== undefined){
 							$(templateWidgets[i].selector)[templateWidgets[i].widget]();
-							console.log('Exist')
-						}else {
-							console.log('Does not exist');
 						}
 					}
 				}
 			}
 
-			function _getCurrentStep(){
-				var data = _contentData[_currentStep] = (_contentData[_currentStep].dataReady)
-				?_contentData[_currentStep]
-				:_activateDataGeneratorsAndWidgets(_contentData[_currentStep]);
+			/**
+			 * Fetch the saved values from the state and add them back to the correct fields
+			 */
+			function _updateFields(){
+				var subject = $('.js-trip-wizard-data-subject').attr('data-subject');
+				var subjectItems = subject !== undefined?stateManager.getState()[subject]:null;
+				if(subjectItems){
+					for(item in subjectItems){
+						$('#' + item).prop('checked', true);
+					}
+				}else {
+					$('.trip-wizard-modal input').each(function(){
+						var stateValue = stateManager.getState()[this.getAttribute('id')]
+						if(stateValue){
+							this.value = stateValue;
+						}
+					})
+				}
+			}
 
-				//Trigger widget runner
-				//_runWidgetsWhenReady(data.templateId);
+			/**
+			 * Being called whenever the HTML is being updates with new step
+			 */
+			function _changed(){
+				_updateFields()
+				_runWidgetsWhenReady();
+			}
+
+			function _getCurrentStep(){
+				//A conditional operator to get the correct data
+				var data = _contentData[_currentStep] = (_contentData[_currentStep].dataReady)?_contentData[_currentStep]
+														:_activateDataGeneratorsAndWidgets(_contentData[_currentStep]);
+
 				return contentManager.getTemplate(data.templateId)(data); 
 			}
 
-			function _getStep(stepNumber){
-				if(!_.isNaN(stepNumber) && stepNumber < _contentData.length){
-					_currentStep =
-					 stepNumber;
-					return _getCur
-					rentStep();
+			function _setStepIndex(stepNumber){
+				if(!_.isNaN(stepNumber) && stepNumber < _contentData.length && stepNumber >= 0){
+					_currentStep = stepNumber;
+					return true;
 				}
 				return null;
 			}
@@ -439,8 +517,8 @@
 				getPreviousStep:function(){
 					return _getPreviousStep();
 				},
-				getStep:function(stepNumber){
-					return _getStep(stepNumber);
+				setStepIndex:function(stepNumber){
+					return _setStepIndex(stepNumber);
 				},
 				hasPrevious: function(){
 					return _currentStep > 0;
@@ -449,11 +527,11 @@
 					return _currentStep < (_contentData.length - 1);
 				},
 				stepChanged: function(){
-					_runWidgetsWhenReady();
+					_changed();
 				}
 			}
 
-		}(jQuery, contentManager, _));
+		}(jQuery, TripWizard.contentManager, _, TripWizard.stateManager));
 
 
 		/**
@@ -470,14 +548,17 @@
 			/**
 			 * Hide the modal
 			 */
-			function hideModal(){
-				$('.trip-wizard-modal-mask, .trip-wizard-modal').fadeOut();
+			function hideModal(callback){
+				callback = callback || function(){};
+				$('.trip-wizard-modal-mask, .trip-wizard-modal').fadeOut(callback);
 			}
 
 			/**
 			 * Show the modal
 			 */
 			function showModal(){
+				stepsManager.setStepIndex(0);
+				setModalContent();
 				$('.trip-wizard-modal-mask, .trip-wizard-modal').fadeIn();
 			}
 
@@ -519,7 +600,8 @@
 						//Change content and then swipe in the next screen
 						callback && callback();
 						swipeRightIn();
-					})
+					}
+				);
 			}
 
 			/**
@@ -529,9 +611,8 @@
 				$('.trip-wizard-modal').css({left:'150%'}).animate(
 					{
 						left:'50%'
-					}, function(){
-						//Notify modal active
-					})
+					}
+				);
 			}
 
 			/**
@@ -560,6 +641,9 @@
 					})
 			}
 
+			/**
+			 * Show next modal screen
+			 */
 			function goNext(){	
 				swipeLeftOut(function(){
 					stepsManager.getNextStep();
@@ -567,11 +651,45 @@
 				});
 			}
 
+			/**
+			 * Show previous modal screen
+			 */
 			function goBack(){
 				swipeRightOut(function(){
 					stepsManager.getPreviousStep();
 					setModalContent();
 				});
+			}
+
+			/**
+			 * Bring modal back to center
+			 */
+			function resetModalPosition(){
+				$('.trip-wizard-modal').css({left:'50%'})
+			}
+
+			function showLoader(){
+				$('.trip-wizard-loader').show();
+			}
+
+			function hideLoader(){
+				$('.trip-wizard-loader').hide();
+			}
+
+			function finish(){
+				$('.trip-wizard-modal').animate({left:'-100%'},
+					//Emulate loading data 
+					function(){
+						showLoader();
+						window.setTimeout(function(){
+							hideLoader();
+							hideModal(function(){
+								stepsManager.setStepIndex(0);
+								resetModalPosition();
+							});
+						},1000);
+					}
+				);
 			}
 
 			/**
@@ -581,7 +699,8 @@
 				'js-trip-wizard-modal-hide':hideModal,
 				'js-trip-wizard-modal-show':showModal,
 				'js-trip-wizard-modal-next':goNext,
-				'js-trip-wizard-modal-prev':goBack
+				'js-trip-wizard-modal-prev':goBack,
+				'js-trip-wizard-modal-finish':finish
 			}
 
 			/**
@@ -616,7 +735,7 @@
 			 * For the sake of example we'll show the modal on page load
 			 */
 			showModal();
-		}(jQuery, stepsManager));
+		}(jQuery, TripWizard.stepsManager));
 	</script>
 </body>
 </html>

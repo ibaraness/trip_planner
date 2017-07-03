@@ -27,7 +27,16 @@
     z-index: 99999;
     font-family: roboto, arial;
 }
-
+.trip-wizard-loader {
+	display: none;
+	position: absolute;
+	width: 150px;
+	height: 150px;
+	left: 50%;
+	top: 50%;
+	margin: -75px 0 0 -75px;
+	background: url('../images/loader.gif') center no-repeat;
+}
 .trip-wizard-modal-close {
 	width: 30px;
 	height: 30px;
