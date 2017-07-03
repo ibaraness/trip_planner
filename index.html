@@ -16,6 +16,7 @@
 	<div class="navigation-bar"></div>
 	<div class="content-wrapper">
 		<button class="js-trip-wizard-modal-show">Open modal</button>
+		<div class="js-trip-wizard-result"></div>
 	</div>
 	
 	<!--[MODAL HTML START]-->
@@ -26,6 +27,10 @@
 		</button>
 		<div class="trip-wizard-modal-content">
 			<h3 class="trip-wizard-modal-title">Let us help you plan your next vacation</h3>
+			<div class="trip-wizard-modal-error js-trip-wizard-modal-error">
+				You must choose date range!
+			</div>
+			
 			<div class="js-trip-wizard-modal-dynamic-content">
 				<!--[Dynamic content will go here]-->
 			</div>
@@ -56,6 +61,14 @@
 			<h5 class="trip-wizard-step1-greeting-text">Lets go...</h5>
 		</div>
 		
+	</script>
+
+	<script type="text/template" id="wizard-result">
+		<h4>You have selected a trip from the <span class="content-date"><%= from_date %></span> to the <span class="content-date"><%= to_date %></span></h4>
+		<p>You have selected the following trip styles:</p>
+		<ul><%= trip_styles %></ul>
+		<p>You have selected the following trip locations:</p>
+		<ul><%= geographical_region %></ul>
 	</script>
 
 	<script type="text/template" id="trip-step2">
@@ -413,7 +426,7 @@
 			 */
 			function _activateDataGeneratorsAndWidgets(obj){
 				var newObj = {};
-				for(pkey in obj){
+				for(var pkey in obj){
 					var property = obj[pkey];
 					if(_.isObject(property) && !_.isArray(property)){
 						if(property.type === 'generator'){
@@ -460,7 +473,7 @@
 				var subject = $('.js-trip-wizard-data-subject').attr('data-subject');
 				var subjectItems = subject !== undefined?stateManager.getState()[subject]:null;
 				if(subjectItems){
-					for(item in subjectItems){
+					for(var item in subjectItems){
 						$('#' + item).prop('checked', true);
 					}
 				}else {
@@ -479,6 +492,41 @@
 			function _changed(){
 				_updateFields()
 				_runWidgetsWhenReady();
+			}
+
+			function _showErrorMessage(message){
+				$('.js-trip-wizard-modal-error').empty().text(message).show();
+			}
+
+			function _hideErrorMessage(){
+				$('.js-trip-wizard-modal-error').hide();
+			}
+
+			function _validate(){
+				var $fromDate = $('#from_date'), $toDate = $('#to_date'), $checkBoxes = $('.js-trip-wizard-data-subject'), checkboxes = 0;
+				if($fromDate.length > 0){
+					if($fromDate.val() === ''){
+						_showErrorMessage('You must choose date range!');
+						return false;
+					}
+				}
+				if($toDate.length > 0){
+					if($toDate.val() === ''){
+						_showErrorMessage('You must choose date range!');
+						return false;
+					}
+				}
+				if($checkBoxes.length > 0){
+					$checkBoxes.find('input').each(function(){
+						checkboxes += +this.checked;
+					});
+					if(checkboxes === 0){
+						_showErrorMessage('You must check at least one checkbox!');
+						return false;
+					}
+				}
+				_hideErrorMessage();
+				return true;
 			}
 
 			function _getCurrentStep(){
@@ -507,6 +555,27 @@
 				return _getCurrentStep();
 			}
 
+			function _getGroup(groupName, wrapperElement){
+				var groupItems = stateManager.getState()[groupName] || {};
+				var groupItemsHTML = '';
+				for(var item in groupItems){
+					groupItemsHTML += wrapperElement && '<' + wrapperElement + '>' + item + '</' + wrapperElement + '>' || item ;
+					console.log('groupItemsHTML', groupItemsHTML)
+				}
+				return groupItemsHTML;
+			}
+
+			function _getWizardResults(){
+				var styles = _getGroup('trip_styles', 'li'), geographical = _getGroup('geographical_region', 'li');
+
+				return contentManager.getTemplate('wizard-result')({
+					from_date: stateManager.getState()['from_date'] || '',
+					to_date: stateManager.getState()['to_date'] || '',
+					trip_styles:styles,
+					geographical_region:geographical
+				});
+			}
+
 			return {
 				getCurrentStep: function(){
 					return _getCurrentStep();
@@ -528,6 +597,12 @@
 				},
 				stepChanged: function(){
 					_changed();
+				},
+				getResults:function(){
+					return _getWizardResults();
+				},
+				validate:function(){
+					return _validate();
 				}
 			}
 
@@ -644,11 +719,13 @@
 			/**
 			 * Show next modal screen
 			 */
-			function goNext(){	
-				swipeLeftOut(function(){
-					stepsManager.getNextStep();
-					setModalContent();
-				});
+			function goNext(){
+				if(stepsManager.validate()){
+					swipeLeftOut(function(){
+						stepsManager.getNextStep();
+						setModalContent();
+					});
+				}
 			}
 
 			/**
@@ -677,19 +754,24 @@
 			}
 
 			function finish(){
-				$('.trip-wizard-modal').animate({left:'-100%'},
-					//Emulate loading data 
-					function(){
-						showLoader();
-						window.setTimeout(function(){
-							hideLoader();
-							hideModal(function(){
-								stepsManager.setStepIndex(0);
-								resetModalPosition();
-							});
-						},1000);
-					}
-				);
+				if(stepsManager.validate()){
+					$('.trip-wizard-modal').animate({left:'-100%'},
+						//Emulate loading data 
+						function(){
+							showLoader();
+							window.setTimeout(function(){
+								hideLoader();
+								hideModal(function(){
+									stepsManager.setStepIndex(0);
+									resetModalPosition();
+
+									//Show result on main content
+									$('.js-trip-wizard-result').empty().append(stepsManager.getResults());
+								});
+							},1000);
+						}
+					);
+				}
 			}
 
 			/**
