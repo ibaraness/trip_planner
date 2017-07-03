@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Trip Planner</title>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="styles/normalize.css">
+	<link rel="stylesheet" type="text/css" href="styles/general.css">
+	<link rel="stylesheet" type="text/css" href="styles/modal.css">
+	<link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+	<link rel="stylesheet" type="text/css" href="font-awesome-4.7.0/css/font-awesome.min.css">
+	
+</head>
+<body>
+	<div class="top-bar"></div>
+	<div class="navigation-bar"></div>
+	<div class="content-wrapper">
+		<button class="js-trip-wizard-modal-show">Open modal</button>
+	</div>
+	
+	<!--[MODAL HTML START]-->
+	<div class="trip-wizard-modal-mask js-trip-wizard-modal-hide"></div>
+	<div class="trip-wizard-modal">
+		<button class="trip-wizard-modal-close js-trip-wizard-modal-hide">
+			<i class="js-trip-wizard-modal-hide trip-wizard-modal-close-icon fa fa-times" aria-hidden="true"></i>
+		</button>
+		<div class="trip-wizard-modal-content">
+			<h3 class="trip-wizard-modal-title">Let us help you plan your next vacation</h3>
+			<div class="js-trip-wizard-modal-dynamic-content">
+				<!--[Dynamic content will go here]-->
+			</div>
+			<button class="trip-wizard-modal-action-button trip-wizard-modal-action-next-button js-trip-wizard-modal-next">Next<i class="trip-wizard-modal-button-icon fa fa-angle-right" aria-hidden="true"></i></button>
+
+			<button class="trip-wizard-modal-action-button trip-wizard-modal-action-back-button js-trip-wizard-modal-prev"><i class="trip-wizard-modal-button-icon fa fa-angle-left" aria-hidden="true"></i>Back</button>
+		</div>
+	</div>
+	<!--[MODAL HTML END]-->
+
+	<!--[UNDERSCORE TEMPLATES START]-->
+	<script type="text/template" id="trip-step1">
+		<img src="images/FotoliaComp_80801024_dYpxND86sIQiqFgh2naxxB7miXBJvDqP_NW40.png" width="310" height="248" alt="travel by car">
+		<h4 class="trip-wizard-modal-subtitle">How many of you will be going?</h4>
+		<%= numOfAdults.value %>
+		<%= numOfChildren.value %>
+	</script>
+
+	<script type="text/template" id="trip-step2">
+		<h4 class="trip-wizard-modal-subtitle">Choose how far will you be willing to travel to?</h4>
+		<ul class="trip-wizard-modal-grid-list">
+			<%= geographicalRegionsList.value %>
+		</ul>
+	</script>
+
+	<script type="text/template" id="trip-wizard-modal-checkbox-grid">
+		<ul class="trip-wizard-modal-grid-list">
+			<%= listItems.value %>
+		</ul>
+	</script>
+
+	<script type="text/template" id="trip-wizard-modal-select">
+		<div class="trip-wizard-modal-form-group">
+			<label for="<%= component_id.value %>"><%= label %></label>
+			<select name="<%= component_id.value %>" id="<%= component_id.value %>"><%= options %></select>
+		</div>
+	</script>
+	<!--[UNDERSCORE TEMPLATES END]-->
+
+	<script src="https://code.jquery.com/jquery-3.2.1.min.js"
+  	integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+  	crossorigin="anonymous"></script>
+  	<script type="text/javascript" src="js/underscore-min.js"></script>
+	<script type="text/javascript">
+
+		/**
+		 * Handle low level template functionality
+		 * Dependencies: jQuery, _(underscore)
+		 */
+		var contentManager = (function($, _){
+
+			if(!$){
+				throw 'jQuery was not loaded!';
+			}
+
+			if(!_){
+				throw 'Underscore was not loaded!';
+			}
+
+			/**
+			 * Get an Underscore template usings id name
+			 * @param  {string} templateId  - The template ID as set in the html
+			 * @return {function}           - An underscore partial template function.
+			 *                                When later passing an object with values to that function
+			 *                                we will get an HTML string of our template with our values.
+			 */
+			function _getTemplate(templateId){
+				var templateHTML = $('#' + templateId).html() || "";
+				return _.template(templateHTML);
+			}
+
+			/**
+			 * Get a list of 'option' tags for range of number, like 1-10 etc.
+			 * @param  {number} from - The range 'from' value (like the 1 from 1-10)
+			 * @param  {number} to   - The range 'to' valte (like the 10 from 1-10)
+			 * @return {[string}      - A string containing the html;
+			 */
+			function _getSelectOptionsNumberRange(from, to){
+				if(_.isNaN(from) || _.isNaN(to)){
+					throw '\'from\' or \'to\' param is not a number';
+				}
+				var $select = $('<select/>');
+				for(var i = from, len = ++to; i < to; i++){
+					var element = $('<option/>',{'value':i, 'text':i});
+					$($select).append(element);
+				}
+				return $select.html();
+			}
+
+			/**
+			 * Get a list of 'option' tags for range of number, like 1-10 etc.
+			 * @param  {array} settingsList - An array of objects, with the checkbox input, and the label tags properties
+			 * @return {[string}      - A string containing the html;
+			 */
+			function _getCheckboxGridList(settingsList){
+				if(!_.isArray(settingsList)){
+					throw '\'settingsList\' is not an array';
+				}
+				var $ul = $('<ul/>');
+				for(var i = 0, len = settingsList.length; i < len; i++){
+					var $checkBok = $('<input/>',{type:'checkbox', name:settingsList[i].id, id:settingsList[i].id});
+					var $label = $('<label/>',{for:settingsList[i].id, text:settingsList[i].label});
+					var $element = $('<li/>').append($checkBok, $label);
+					$($ul).append($element);
+				}
+				return $ul.html();
+			}
+
+			function _createNumberRangeFormGroup(template, from, to, id, label){
+				var settings = {
+					component_id:id,
+					label:label,
+					options: _getSelectOptionsNumberRange(from, to)
+				};
+				return template(settings);
+			}
+
+			var _createNumberRangeFormGroupPartial = _.partial(_createNumberRangeFormGroup, _getTemplate('trip-wizard-modal-select'));
+
+			return {
+				getNumberRangeSelect:function(from, to, id, label){
+					return _createNumberRangeFormGroupPartial(from, to, id, label);
+				},
+				getCheckboxGridList:function(settingsList){
+					return _getCheckboxGridList(settingsList);
+				},
+				getTemplate: function(templateId){
+					return _getTemplate(templateId);
+				}
+			};
+		}(jQuery, _));
+
+		/**
+		 * Fetch modal steps
+		 */
+		var stepsManager = (function($, contentManager, _){
+			/**
+			 * Will hold the index of the current step we are in 
+			 */
+			var _currentStep = 0;
+
+			/**
+			 * Steps data - 
+			 * Each object in the array has a list of properties like template id, properties etc.
+			 */
+			var _contentData1 = [
+				{
+					templateId:'trip-step1',
+					numOfAdults:function(){return contentManager.getNumberRangeSelect(0, 30, 'numOfAdults', 'Adults')},
+					numOfChildren:function(){return contentManager.getNumberRangeSelect(0, 30, 'numOfChildren', 'Children')}
+				},
+				{
+					templateId:'trip-step2',
+					geographicalRegionsList:function(){return contentManager.getCheckboxGridList([
+						{
+							id:'all', label:'All',
+						},
+						{
+							id:'europ', label:'Europ'
+						},
+						{
+							id:'north_america', label:'North America'
+						},
+						{
+							id:'south_america', label:'South America'
+						},
+						{
+							id:'central_america', label:'Central America'
+						},
+						{
+							id:'africa', label:'Africa'
+						},
+						{
+							id:'asia', label:'Asia'
+						},
+						{
+							id:'pacific', label:'Pacific Rim'
+						},
+						{
+							id:'arctic', label:'Arctic Region'
+						}
+					])}
+				}
+			];
+
+			var _contentData = [
+				{
+					templateId:'trip-step1',
+					dataReady:false,
+					numOfAdults: {
+						type:'generator',
+						params:[0, 30, 'numOfAdults', 'Adults'],
+						value:'',
+						generator:'getNumberRangeSelect'
+					},
+					numOfChildren: {
+						type:'generator',
+						params:[0, 30, 'numOfChildren', 'Children'],
+						value:'',
+						generator:'getNumberRangeSelect'
+					}
+				},
+				{
+					templateId:'trip-step2',
+					dataReady:false,
+					geographicalRegionsList: {
+						type:'generator',
+						params:[
+							[
+								{
+									id:'all', label:'All',
+								},
+								{
+									id:'europ', label:'Europ'
+								},
+								{
+									id:'north_america', label:'North America'
+								},
+								{
+									id:'south_america', label:'South America'
+								},
+								{
+									id:'central_america', label:'Central America'
+								},
+								{
+									id:'africa', label:'Africa'
+								},
+								{
+									id:'asia', label:'Asia'
+								},
+								{
+									id:'pacific', label:'Pacific Rim'
+								},
+								{
+									id:'arctic', label:'Arctic Region'
+								}
+							]
+						],
+						value:'',
+						generator:'getCheckboxGridList'
+					}
+				}
+			];
+
+			/**
+			 * A helper function, that runs callback functions in a step object.
+			 * @param  {object} obj - The original step object to run it's data callback methods.
+			 * @return {object}     - We return a new object to avoid side effects of immulating the existing one.
+			 */
+			// function _activateDataMethods(obj){
+			// 	var newObj = {};
+			// 	for(prop in obj){
+			// 		if(typeof obj[prop] === 'function'){
+			// 			newObj[prop] = obj[prop]();
+			// 			continue;;
+			// 		}
+			// 		newObj[prop] = obj[prop];
+			// 	}
+			// 	return newObj;
+			// }
+
+			// function _getCurrentStep(){
+			// 	var data = _contentData[_currentStep] = _activateDataMethods(_contentData[_currentStep]);
+			// 	return contentManager.getTemplate(data.templateId)(data); 
+			// }
+
+			function _activateDataGenerators(obj){
+				var newObj = {};
+				for(pkey in obj){
+					var property = obj[pkey];
+					if(_.isObject(property) && !_.isArray(property) && property.type === 'generator'){
+						if(typeof contentManager[property.generator] === 'function'){
+							newObj[pkey] = {
+								value: contentManager[property.generator].apply(null, property.params || [])
+							};
+							continue;
+						}
+					}
+					newObj[pkey] = property;
+				}
+				newObj.dataReady = true;
+				return newObj;
+			}
+
+			function _getCurrentStep(){
+				var data = _contentData[_currentStep] = (_contentData[_currentStep].dataReady)
+				?_contentData[_currentStep]
+				:_activateDataGenerators(_contentData[_currentStep]);
+				return contentManager.getTemplate(data.templateId)(data); 
+			}
+
+			function _getStep(stepNumber){
+				if(!_.isNaN(stepNumber) && stepNumber < _contentData.length){
+					_currentStep =
+					 stepNumber;
+					return _getCur
+					rentStep();
+				}
+				return null;
+			}
+
+			function _getNextStep(){
+				_currentStep = ++_currentStep < _contentData.length?_currentStep:--_currentStep;
+				return _getCurrentStep();
+			}
+
+			function _getPreviousStep(){
+				_currentStep = --_currentStep >= 0?_currentStep:++_currentStep;
+				return _getCurrentStep();
+			}
+
+			return {
+				getCurrentStep: function(){
+					return _getCurrentStep();
+				},
+				getNextStep:function(){
+					return _getNextStep();
+				},
+				getPreviousStep:function(){
+					return _getPreviousStep();
+				},
+				getStep:function(stepNumber){
+					return _getStep(stepNumber);
+				}
+			}
+
+		}(jQuery, contentManager, _));
+
+
+		/**
+		 * An IIFE that handle the modal functionality
+		 * @param  {[jQuery} $ - The actual jQuery libaray
+		 */
+		(function($, stepsManager){
+			"use strict";
+
+			if(!$) {
+				throw 'jQuery was not loaded!';
+			}
+
+			/**
+			 * Hide the modal
+			 */
+			function hideModal(){
+				$('.trip-wizard-modal-mask, .trip-wizard-modal').fadeOut();
+			}
+
+			/**
+			 * Show the modal
+			 */
+			function showModal(){
+				$('.trip-wizard-modal-mask, .trip-wizard-modal').fadeIn();
+			}
+
+			/**
+			 * Get modal content
+			 */
+			function setModalContent(){
+				$('.js-trip-wizard-modal-dynamic-content')
+				.empty()
+				.append(stepsManager.getCurrentStep());
+			}
+
+			/**
+			 * Swipe out to the left - to show the next modal screen
+			 */
+			function swipeLeftOut(callback){
+				$('.trip-wizard-modal').animate(
+					{
+						left:'-100%'
+					}, function(){
+						//Change content and then swipe in the next screen
+						callback && callback();
+						swipeRightIn();
+					})
+			}
+
+			/**
+			 * Swipe right in to bring the next modal screen 
+			 */
+			function swipeRightIn(){
+				$('.trip-wizard-modal').css({left:'150%'}).animate(
+					{
+						left:'50%'
+					}, function(){
+						//Notify modal active
+					})
+			}
+
+			/**
+			 * Swipe out to the right - to show the previous modal screen
+			 */
+			function swipeRightOut(callback){
+				$('.trip-wizard-modal').animate(
+					{
+						left:'150%'
+					}, function(){
+						//Change content and then swipe in the next screen
+						callback && callback();
+						swipeLeftIn();
+					})
+			}
+
+			/**
+			 * Swipe left in to bring the previous modal screen
+			 */
+			function swipeLeftIn(){
+				$('.trip-wizard-modal').css({left:'-100%'}).animate(
+					{
+						left:'50%'
+					}, function(){
+						//Notify modal active
+					})
+			}
+
+			function goNext(){	
+				swipeLeftOut(function(){
+					stepsManager.getNextStep();
+					setModalContent();
+				});
+			}
+
+			function goBack(){
+				swipeRightOut(function(){
+					stepsManager.getPreviousStep();
+					setModalContent();
+				});
+			}
+
+			/**
+			 * Using the command pattern
+			 */
+			var clickEventDelegationHandlers = {
+				'js-trip-wizard-modal-hide':hideModal,
+				'js-trip-wizard-modal-show':showModal,
+				'js-trip-wizard-modal-next':goNext,
+				'js-trip-wizard-modal-prev':goBack
+			}
+
+			/**
+			 * Deside which callback to run depanding on the event target class
+			 * @param  {event object} event - The event object returned from the event listener
+			 */
+			function clickDelegator(event){
+				var classes = event.target.className.split(" ");
+				for(var i = 0, len = classes.length; i < len; i++){
+					if(clickEventDelegationHandlers[classes[i]]){
+						clickEventDelegationHandlers[classes[i]].call(event.target);
+					}
+				}
+			}
+
+			/**
+			 * Cancel any previouse event listener related to trip-wizard-modal
+			 */
+			$(document).off('click.trip-wizard-modal');
+
+			/**
+			 * Add an event listener to the document, so we can delegate the event using the event target. 
+			 */
+			$(document).on('click.trip-wizard-modal', clickDelegator);
+
+			/**
+			 * Set the initial content of the modal
+			 */
+			setModalContent();
+
+			/**
+			 * For the sake of example we'll show the modal on page load
+			 */
+			showModal();
+		}(jQuery, stepsManager));
+	</script>
+</body>
+</html>

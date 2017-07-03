@@ -1,0 +1,100 @@
+.trip-wizard-modal-mask {
+	opacity: 0.5;
+	background-color: #000;
+	position: fixed;
+	display: none;
+	top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 99999;
+}
+
+.trip-wizard-modal {
+	width: 640px;
+	padding: 20px;
+	box-sizing: border-box;
+	text-align: center;
+	height: 450px;
+	background-color: #ffffff;
+	position: fixed;
+	display: none;
+	top: 50%;
+    left: 50%;
+    margin-left: -320px;
+    margin-top: -225px;
+    border-radius:3px;
+    z-index: 99999;
+    font-family: roboto, arial;
+}
+
+.trip-wizard-modal-close {
+	width: 30px;
+	height: 30px;
+	position: absolute;
+	right: 5px;
+	top: 5px;
+	border: none;
+    background: transparent;
+    font-size: 18px;
+    outline: none;
+    color: #4e4e4e;
+}
+.trip-wizard-modal-close-icon {
+	cursor: pointer;
+}
+.trip-wizard-modal-title {
+	color: #2b7bbd;
+	margin: 0;
+    padding: 0;
+    font-size: 27px;
+    font-weight: normal;
+}
+.trip-wizard-modal-subtitle {
+	color: #002e82;
+	margin: 10px 0;
+    padding: 0;
+    font-size: 18px;
+    font-weight: bold;
+}
+.trip-wizard-modal-form-group {
+	display: inline-block;
+    margin-left: 30px;
+}
+.trip-wizard-modal-action-button {
+	cursor: pointer;
+    border-radius: 6px;
+    padding: 5px 25px;
+    line-height: 34px;
+    font-size: 23px;
+    border: 0;
+    color: #fff;
+    background-color: #07c;
+}
+.trip-wizard-modal-action-button:hover {
+	background-color: #003580;
+}
+.trip-wizard-modal-action-next-button {
+	position: absolute;
+	right: 20px;
+	bottom: 20px;
+}
+.trip-wizard-modal-action-back-button {
+	position: absolute;
+	left: 20px;
+	bottom: 20px;
+}
+.trip-wizard-modal-button-icon {
+	font-size: 23px;
+	margin-left: 10px;
+}
+.trip-wizard-modal-grid-list li {
+    display: block;
+    float: left;
+    text-align: left;
+    margin:5px 0;
+    width: 25%;
+}
+.trip-wizard-modal input[type=checkbox] {
+	margin-right: 5px;
+}
