@@ -45,7 +45,7 @@
 }
 .trip-wizard-modal-title {
 	color: #2b7bbd;
-	margin: 0;
+	margin: 10px 0 0 0;
     padding: 0;
     font-size: 27px;
     font-weight: normal;
@@ -59,14 +59,14 @@
 }
 .trip-wizard-modal-form-group {
 	display: inline-block;
-    margin-left: 30px;
+    margin:10px 0 0 30px;
 }
 .trip-wizard-modal-action-button {
 	cursor: pointer;
     border-radius: 6px;
     padding: 5px 25px;
     line-height: 34px;
-    font-size: 23px;
+    font-size: 15px;
     border: 0;
     color: #fff;
     background-color: #07c;
@@ -79,14 +79,22 @@
 	right: 20px;
 	bottom: 20px;
 }
+.trip-wizard-modal-action-next-button i{
+	margin-left: 10px;
+}
 .trip-wizard-modal-action-back-button {
 	position: absolute;
 	left: 20px;
 	bottom: 20px;
 }
+.trip-wizard-modal-action-back-button i {
+	margin-right: 10px;
+}
 .trip-wizard-modal-button-icon {
 	font-size: 23px;
-	margin-left: 10px;
+}
+.trip-wizard-modal-grid-list {
+	overflow: hidden;
 }
 .trip-wizard-modal-grid-list li {
     display: block;
@@ -97,4 +105,18 @@
 }
 .trip-wizard-modal input[type=checkbox] {
 	margin-right: 5px;
+}
+.trip-wizard-hide {
+	display: none;
+}
+.trip-wizard-step1-greeting-text {
+	float: left;
+    margin: 109px 0 0 10px;
+    color: #2b7bbd;
+    font-weight: normal;
+    font-size: 21px;
+}
+.trip-wizard-step1-image {
+	float:left;
+	margin-left:50px;
 }
